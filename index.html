@@ -82,7 +82,7 @@ h2.sec::before{content:"";width:10px;height:10px;background:var(--accent);transf
 .odo-wrap{margin-top:18px}
 .odo-lab{font:600 12px/1 var(--f-head);letter-spacing:.16em;color:var(--muted);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
 .odo{display:flex;gap:3px;font:600 34px/1 var(--f-num)}
-.odo-d{flex:1;max-width:46px;height:58px;display:grid;place-items:center;background:var(--accent-2);color:var(--on-accent);border-radius:4px;box-shadow:inset 0 -10px 0 var(--shade)}
+.odo-d{flex:1;max-width:46px;height:58px;display:grid;place-items:center;background:var(--accent-2);color:var(--fg);border-radius:4px;box-shadow:inset 0 -10px 0 var(--shade)}
 .odo-d.last{background:var(--accent-strong);color:var(--on-accent)}
 .odo-unit{align-self:flex-end;font:600 14px var(--f-head);color:var(--muted);padding:0 0 6px 6px;letter-spacing:.1em}
 
@@ -220,6 +220,15 @@ textarea{min-height:120px;font:13px/1.4 var(--f-num)}
 .actions .pri{flex:1}
 .bigopt{display:flex;align-items:center;gap:14px;width:100%;min-height:64px;padding:0 14px;margin-bottom:10px;background:var(--bg);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:6px;text-align:left;font:600 17px var(--f-head);letter-spacing:.04em}
 .bigopt svg{width:30px;height:30px;color:var(--accent)}
+.swatches{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0 8px}
+.sw{width:44px;height:44px;min-width:44px;padding:0;border-radius:50%;border:2px solid var(--line);box-shadow:inset 0 0 0 2px var(--bg)}
+.sw[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--bg),0 0 0 3px var(--fg);border-color:var(--fg)}
+.cust{display:inline-flex;align-items:center;gap:8px;min-height:44px;font:600 13px var(--f-body);color:var(--muted)}
+.cust input{width:44px;height:44px;padding:0;border:2px solid var(--line);border-radius:50%;background:none;cursor:pointer}
+.cust input::-webkit-color-swatch-wrapper{padding:0}
+.cust input::-webkit-color-swatch{border:0;border-radius:50%}
+.cust input::-moz-color-swatch{border:0;border-radius:50%}
+.cust input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 #vpProbe{position:fixed;top:0;bottom:0;left:0;width:1px;opacity:0;pointer-events:none;z-index:-1}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + var(--safe-b) + var(--clip-b));z-index:50;max-width:min(440px,calc(100vw - 32px));background:var(--fg);color:var(--bg);padding:10px 14px;border-radius:6px;font-size:14px;font-weight:500}
 #toast.err{background:var(--crit-fill);color:var(--on-crit)}
@@ -531,12 +540,94 @@ function nextMaintenance(rs,curKm,now){
   for(var i=0;i<rs.length;i++) if(rs[i].st.status==='ok') return {item:rs[i],progress:remProgress(rs[i].rem,rs[i].st,curKm,now)};
   return null;
 }
+/* Vurgu paleti: tohum renkten (HSL) koyu zemin #0d0809 üstünde okunur accent, beyaz/koyu yazılı accentStrong, koyu accent2 türetir */
+var ACCENT_DEFAULT='#e5383b', ACCENT_BG='#0d0809', ACCENT_DARK_TEXT='#140a0c';
+function hexToRgb(hex){
+  var m=/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(hex==null?'':hex).trim());
+  if(!m) return null;
+  var x=m[1]; if(x.length===3) x=x.charAt(0)+x.charAt(0)+x.charAt(1)+x.charAt(1)+x.charAt(2)+x.charAt(2);
+  return [parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16)];
+}
+function rgbToHsl(r,g,b){
+  r/=255; g/=255; b/=255;
+  var mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2, d=mx-mn, h=0, s=0;
+  if(d>0){
+    s=d/(1-Math.abs(2*l-1));
+    if(mx===r) h=((g-b)/d)%6; else if(mx===g) h=(b-r)/d+2; else h=(r-g)/d+4;
+    h*=60; if(h<0) h+=360;
+  }
+  return {h:h,s:s,l:l};
+}
+function hslToHex(h,s,l){
+  var c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2, r=0,g=0,b=0;
+  if(h<60){r=c;g=x;} else if(h<120){r=x;g=c;} else if(h<180){g=c;b=x;} else if(h<240){g=x;b=c;} else if(h<300){r=x;b=c;} else {r=c;b=x;}
+  function f(v){ var n=Math.round((v+m)*255); n=Math.max(0,Math.min(255,n)); return (n<16?'0':'')+n.toString(16); }
+  return '#'+f(r)+f(g)+f(b);
+}
+function relLum(hex){
+  var c=hexToRgb(hex)||[0,0,0];
+  var a=c.map(function(v){ v/=255; return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4); });
+  return 0.2126*a[0]+0.7152*a[1]+0.0722*a[2];
+}
+function contrastRatio(a,b){
+  var x=relLum(a), y=relLum(b), hi=Math.max(x,y), lo=Math.min(x,y);
+  return (hi+0.05)/(lo+0.05);
+}
+function accentPalette(hex){
+  var rgb=hexToRgb(hex)||hexToRgb(ACCENT_DEFAULT);
+  var c=rgbToHsl(rgb[0],rgb[1],rgb[2]), s=c.s<0.06?0:c.s, h=c.h, l=c.l;
+  while(contrastRatio(hslToHex(h,s,l),ACCENT_BG)<4.5&&l<0.99) l+=0.01;
+  var accent=hslToHex(h,s,l);
+  var sl=Math.max(0.2,l-0.09), strong=hslToHex(h,s,sl), on='#ffffff';
+  if(contrastRatio('#ffffff',strong)<4.5){
+    var dl=sl, ds=strong;
+    while(contrastRatio('#ffffff',ds)<4.5&&dl>sl-0.1&&dl>0.36){ dl-=0.01; ds=hslToHex(h,s,dl); }
+    if(contrastRatio('#ffffff',ds)>=4.5){ strong=ds; }
+    else{
+      on=ACCENT_DARK_TEXT;
+      while(contrastRatio(on,strong)<4.5&&sl<0.98){ sl+=0.01; strong=hslToHex(h,s,sl); }
+    }
+  }
+  return {accent:accent,accentStrong:strong,accent2:hslToHex(h,s*0.65,0.3),onAccent:on};
+}
 function stable(o){ return JSON.stringify(Object.keys(o).sort().map(function(k){return [k,o[k]];})); }
 // ==PURE-END==
 
 var STANDALONE=!!window.ARAC_STANDALONE;
 var $=function(id){return document.getElementById(id);};
 document.documentElement.lang='tr';
+
+/* ---------- ana renk (cihaz tercihi; dışa/içe aktarmaya dahil değil) ---------- */
+var ACCENT_KEY='arac-defteri:accent';
+var ACCENTS=[['Kırmızı','#e5383b'],['Turuncu','#f97316'],['Sarı','#facc15'],['Yeşil','#22c55e'],['Turkuaz','#14b8a6'],['Mavi','#3b82f6'],['Mor','#a855f7'],['Pembe','#ec4899'],['Gri','#9a9a9a']];
+var accentSeed=null; /* null = varsayılan kırmızı */
+function applyAccent(hex){
+  var st=document.documentElement.style;
+  if(!hex||hex===ACCENT_DEFAULT){ ['--accent','--accent-strong','--accent-2','--on-accent'].forEach(function(k){ st.removeProperty(k); }); return; }
+  var p=accentPalette(hex);
+  st.setProperty('--accent',p.accent); st.setProperty('--accent-strong',p.accentStrong); st.setProperty('--accent-2',p.accent2); st.setProperty('--on-accent',p.onAccent);
+}
+function loadAccent(){
+  var v=null; try{ v=localStorage.getItem(ACCENT_KEY); }catch(e){ v=null; }
+  accentSeed=(v&&/^#[0-9a-f]{6}$/i.test(v)&&v.toLowerCase()!==ACCENT_DEFAULT)?v.toLowerCase():null;
+  applyAccent(accentSeed);
+}
+function setAccent(hex){
+  hex=String(hex||'').toLowerCase();
+  if(!/^#[0-9a-f]{6}$/.test(hex)) return;
+  accentSeed=hex===ACCENT_DEFAULT?null:hex;
+  applyAccent(accentSeed);
+  try{ if(accentSeed) localStorage.setItem(ACCENT_KEY,accentSeed); else localStorage.removeItem(ACCENT_KEY); }catch(e){}
+  syncAccentUi();
+}
+function syncAccentUi(){
+  var cur=accentSeed||ACCENT_DEFAULT, name='Özel';
+  ACCENTS.forEach(function(a){ if(a[1]===cur) name=a[0]; });
+  document.querySelectorAll('.sw').forEach(function(b){ b.setAttribute('aria-pressed',b.getAttribute('data-hex')===cur?'true':'false'); });
+  var inp=$('accentCustom'); if(inp&&inp.value!==cur) inp.value=cur;
+  var nm=$('accentName'); if(nm) nm.textContent='Seçili: '+name;
+}
+loadAccent();
 
 function h(tag,props){
   var e=document.createElement(tag), kids=Array.prototype.slice.call(arguments,2);
@@ -1144,6 +1235,14 @@ function renderVehicle(c){
       h('button',{type:'button',class:'btn',id:'vehEdit',onclick:function(e){ openVehicle(v,e.currentTarget); }},'Düzenle'),
       h('button',{type:'button',class:'btn ghost',id:'vehNew',onclick:function(e){ openVehicle(null,e.currentTarget); }},ico('plus'),'Yeni araç')));
   }
+  root.append(sec('Görünüm'));
+  root.append(h('div',{class:'lab',id:'accentLab'},'Ana renk'));
+  root.append(h('div',{class:'swatches',role:'group','aria-labelledby':'accentLab'},
+    ACCENTS.map(function(a){ return h('button',{type:'button',class:'sw','data-hex':a[1],'aria-label':a[0],'aria-pressed':'false',style:'background:'+a[1],onclick:function(){ setAccent(a[1]); }}); }),
+    h('label',{class:'cust',for:'accentCustom'},h('input',{type:'color',id:'accentCustom',value:accentSeed||ACCENT_DEFAULT,oninput:function(e){ setAccent(e.target.value); }}),'Özel')));
+  root.append(h('p',{class:'small muted',id:'accentName'}));
+  root.append(h('div',{class:'btnrow'},h('button',{type:'button',class:'btn ghost',id:'accentReset',onclick:function(){ setAccent(ACCENT_DEFAULT); }},'Varsayılana dön')));
+  syncAccentUi();
   if(c&&!sample&&photoOk){
     root.append(sec('Araç fotoğrafı'));
     root.append(h('img',{class:'vphoto',id:'vehPhotoPrev',alt:'Araç fotoğrafı önizleme',hidden:true}));
