@@ -1,5 +1,5 @@
 // otomatik üretildi: tools/build-pwa.mjs
-const CACHE = 'arac-defteri-7779dc10e9';
+const CACHE = 'arac-defteri-4d1d22efdd';
 const PRECACHE = ["./","index.html","manifest.webmanifest","icons/icon-180.png","icons/icon-192.png","icons/icon-512.png","icons/icon-512-maskable.png"];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));

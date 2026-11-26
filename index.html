@@ -806,6 +806,40 @@ function cap(name){
   try{ if(window.claude&&typeof window.claude.use==='function') return Promise.resolve(window.claude.use(name)).catch(function(){return null;}); }catch(e){}
   return Promise.resolve(null);
 }
+/* masaüstü uygulaması kurulumu (desktop.install; başka desktop API'si kullanılmaz) */
+var deskP=null, deskBusy=false;
+function deskGet(){
+  if(STANDALONE) return Promise.resolve(null);
+  if(!deskP) deskP=cap('desktop').then(function(d){
+    if(!d||!d.install||typeof d.install.state!=='function') return null;
+    return Promise.resolve(d.install.state()).then(function(st){ return {d:d,st:st}; });
+  }).catch(function(){ return null; });
+  return deskP;
+}
+function deskFill(){
+  var row=$('deskRow'); if(!row) return;
+  deskGet().then(function(r){
+    row=$('deskRow'); if(!row||!r) return;
+    if(r.st==='available'){
+      row.replaceChildren(sec('Masaüstü uygulaması'),h('div',{class:'btnrow'},h('button',{type:'button',class:'btn',id:'deskInstall',onclick:deskInstall},'Uygulama olarak yükle')));
+      row.hidden=false;
+    }else if(r.st==='installed'){
+      row.replaceChildren(sec('Masaüstü uygulaması'),h('p',{class:'small muted',id:'deskNote'},'Masaüstü uygulaması olarak kurulu'));
+      row.hidden=false;
+    }
+  });
+}
+function deskInstall(){
+  if(deskBusy) return; deskBusy=true;
+  deskGet().then(function(r){
+    if(!r) return;
+    return Promise.resolve(r.d.install.request()).then(function(res){
+      var m={installed:'Kurulum başladı.',cancelled:'Kurulum iptal edildi.',unavailable:'Kurulum bu ortamda kullanılamıyor.',failed:'Kurulum başarısız oldu.'};
+      toast(m[res]||('Kurulum sonucu: '+res),res==='failed'||res==='unavailable');
+    });
+  }).catch(function(e){ toast('Kurulum yapılamadı: '+errMsg(e),true); })
+    .then(function(){ deskBusy=false; });
+}
 function goLocal(why){
   clearTimeout(bootTimer); mode='local'; loadLocal();
   var w=$('localWhy'); if(why){ w.textContent=why; w.hidden=false; }
@@ -1243,6 +1277,7 @@ function renderVehicle(c){
   root.append(h('p',{class:'small muted',id:'accentName'}));
   root.append(h('div',{class:'btnrow'},h('button',{type:'button',class:'btn ghost',id:'accentReset',onclick:function(){ setAccent(ACCENT_DEFAULT); }},'Varsayılana dön')));
   syncAccentUi();
+  if(!STANDALONE){ root.append(h('div',{id:'deskRow',hidden:true})); deskFill(); }
   if(c&&!sample&&photoOk){
     root.append(sec('Araç fotoğrafı'));
     root.append(h('img',{class:'vphoto',id:'vehPhotoPrev',alt:'Araç fotoğrafı önizleme',hidden:true}));
